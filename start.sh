@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Input info
-read -p "Entre com o IP do Servidor: " IP &>> $LOG
+read -p "Entre com o IP do Servidor: " IP
 
 # ARQUIVO DE LOG
 LOGSCRIPT="/var/log/$(echo $0 | cut -d'/' -f2)"
@@ -11,6 +11,9 @@ LOGSCRIPT="/var/log/$(echo $0 | cut -d'/' -f2)"
 #
 # Configuração da variável de Log utilizado nesse script
 LOG=$LOGSCRIPT
+
+
+echo -e "Início do script $0 em: $(date +%d/%m/%Y-"("%H:%M")")\n" &>> $LOG
 
 # ATUALIZANDO E INSTALANDO OS PACOTES ESSENCIAIS
 apt update &>> $LOG && \ 
@@ -34,3 +37,19 @@ docker stack deploy -c portainer-agent-stack.yml portainer &>> $LOG
 
 # ACESSANDO O DIRETORIO ROOT
 cd ~ &>> $LOG
+
+
+# FIM
+# script para calcular o tempo gasto (SCRIPT MELHORADO, CORRIGIDO FALHA DE HORA:MINUTO:SEGUNDOS)
+# opção do comando date: +%T (Time)
+HORAFINAL=$(date +%T)
+# opção do comando date: -u (utc), -d (date), +%s (second since 1970)
+HORAINICIAL01=$(date -u -d "$HORAINICIAL" +"%s")
+HORAFINAL01=$(date -u -d "$HORAFINAL" +"%s")
+# opção do comando date: -u (utc), -d (date), 0 (string command), sec (force second), +%H (hour), %M (minute), %S (second), 
+TEMPO=$(date -u -d "0 $HORAFINAL01 sec - $HORAINICIAL01 sec" +"%H:%M:%S")
+# $0 (variável de ambiente do nome do comando)
+echo -e "Tempo gasto para execução do script $0: $TEMPO"
+echo -e "Pressione <Enter> para concluir o processo."
+read
+exit 1
