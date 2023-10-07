@@ -8,7 +8,7 @@ apt install upgrade -y
 curl -fsSL https://get.docker.com -o get-docker.sh
 sh get-docker.sh
 
-
+docker swarm init 
 # PORTAINER
 mkdir portainer && cd portainer
 curl -L https://downloads.portainer.io/ce2-19/portainer-agent-stack.yml -o portainer-agent-stack.yml
