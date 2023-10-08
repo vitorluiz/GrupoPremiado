@@ -42,7 +42,7 @@ do
         "Sistema Essêncial")
             clear
             echo "Opção Escolhida: $opt"
-            read -p "Hostname do servidor" HOSTNAME
+            read -p "Hostname do servidor " HOSTNAME
             # Definindo o Timezone 
             echo Definindo o Timezone para America/Sao_Paulo
             timedatectl set-timezone America/Sao_Paulo &>> $LOG
@@ -50,7 +50,7 @@ do
             echo Atualizando os pacotes
             apt update &>> $LOG
             echo Instalando os pacotes essenciais
-            apt install build-essential git wget unzip curl apparmor apparmor-utils apache2-utils &>> $LOG
+            apt install build-essential git wget unzip curl apparmor apparmor-utils apache2-utils -y &>> $LOG
             echo Atualizando o sistema
             apt install upgrade -y &>> $LOG
             hostnamectl set-hostnamem $HOSTNAME
