@@ -34,73 +34,73 @@ options=(
 select opt in "${options[@]}"
 do
     case $opt in
-        "Sistema Essêncial")
-            clear
-            echo "Opção Escolhida: $opt"
-            read -p "Hostname do servidor: " HOSTNAME
-            # Definindo o Timezone 
-            echo Definindo o Timezone para America/Sao_Paulo
-            timedatectl set-timezone America/Sao_Paulo &>> $LOG
-            # ATUALIZANDO E INSTALANDO OS PACOTES ESSENCIAIS
-            echo Atualizando os pacotes
-            apt update &>> $LOG
-            echo Instalando os pacotes essenciais
-            apt install build-essential git wget unzip curl apparmor apparmor-utils apache2-utils -y &>> $LOG
-            echo Atualizando o sistema
-            apt install upgrade -y &>> $LOG
-            hostnamectl set-hostname $HOSTNAME
-            ;;
-        "Instalar Docker")
-            echo "opção $opt"
-            echo Baixando o instalador do Docker CE
-            curl -fsSL https://get.docker.com -o get-docker.sh &>> $LOG
-            echo Instalando o Docker CE
-            sh get-docker.sh &>> $LOG
-            echo Instalado $(docker --version)
-            echo Instalado $(docker compose --version)
+    "Sistema Essêncial")
+        clear
+        echo "Opção Escolhida: $opt"
+        read -p "Hostname do servidor: " HOSTNAME
+        # Definindo o Timezone 
+        echo Definindo o Timezone para America/Sao_Paulo
+        timedatectl set-timezone America/Sao_Paulo &>> $LOG
+        # ATUALIZANDO E INSTALANDO OS PACOTES ESSENCIAIS
+        echo Atualizando os pacotes
+        apt update &>> $LOG
+        echo Instalando os pacotes essenciais
+        apt install build-essential git wget unzip curl apparmor apparmor-utils apache2-utils -y &>> $LOG
+        echo Atualizando o sistema
+        apt install upgrade -y &>> $LOG
+        hostnamectl set-hostname $HOSTNAME
+        ;;
+    "Instalar Docker")
+        echo "opção $opt"
+        echo Baixando o instalador do Docker CE
+        curl -fsSL https://get.docker.com -o get-docker.sh &>> $LOG
+        echo Instalando o Docker CE
+        sh get-docker.sh &>> $LOG
+        echo Instalado $(docker --version)
+        echo Instalado $(docker compose --version)
 
-            # HABILITANDO O MODO SWARM NO DOCKER CE
-            echo Habilitando o Docker Swarm
-            docker swarm init $IP &>> $LOG
-            docker swarm init --advertise-addr $IP &>> $LOG
-            ;;
-        "Instalar Portainer")
-            echo "opção $opt"
-            # PORTAINER
-            echo Instalando o Portainer
-            cd ~
-            mkdir portainer &>> $LOG
-            cd portainer &>> $LOG
-            read -p "Entre com o Domínio do Portainer: " $DOMAIN_PORTAINER
-            read -p "Entre com o Domínio do Edge: " $DOMAIN_EDGE
-            cat <<\EOF >> docker-compose.yml
-            version: "3.3"
-            services:
-            portainer:
-                container_name: portainer
-                image: portainer/portainer-ce:latest
-                restart: always
-                command: -H unix:///var/run/docker.sock
-            volumes:
-                - /var/run/docker.sock:/var/run/docker.sock
-                - portainer_data:/data
-            labels:
-                # Frontend
-                - "traefik.enable=true"
-                - "traefik.http.routers.frontend.rule=Host(`$DOMAIN_PORTAINER`)" #Coloque o Seu Dominio do Portainer Aqui
-                - "traefik.http.routers.frontend.entrypoints=websecure"
-                - "traefik.http.services.frontend.loadbalancer.server.port=9000"
-                - "traefik.http.routers.frontend.service=frontend"
-                - "traefik.http.routers.frontend.tls.certresolver=leresolver"
-                # Edge
-                - "traefik.http.routers.edge.rule=Host(`$DOMAIN_EDGE`)" #Coloque o Seu Dominio do Edge Aqui
-                - "traefik.http.routers.edge.entrypoints=websecure"
-                - "traefik.http.services.edge.loadbalancer.server.port=8000"
-                - "traefik.http.routers.edge.service=edge"
-                - "traefik.http.routers.edge.tls.certresolver=leresolver"
+        # HABILITANDO O MODO SWARM NO DOCKER CE
+        echo Habilitando o Docker Swarm
+        docker swarm init $IP &>> $LOG
+        docker swarm init --advertise-addr $IP &>> $LOG
+        ;;
+    "Instalar Portainer")
+        echo "opção $opt"
+        # PORTAINER
+        echo Instalando o Portainer
+        cd ~
+        mkdir portainer &>> $LOG
+        cd portainer &>> $LOG
+        read -p "Entre com o Domínio do Portainer: " $DOMAIN_PORTAINER
+        read -p "Entre com o Domínio do Edge: " $DOMAIN_EDGE
+        cat <<\EOF >> docker-compose.yml
+version: "3.3"
+services:
+portainer:
+    container_name: portainer
+    image: portainer/portainer-ce:latest
+    restart: always
+    command: -H unix:///var/run/docker.sock
+volumes:
+    - /var/run/docker.sock:/var/run/docker.sock
+    - portainer_data:/data
+labels:
+    # Frontend
+    - "traefik.enable=true"
+    - "traefik.http.routers.frontend.rule=Host(`$DOMAIN_PORTAINER`)" #Coloque o Seu Dominio do Portainer Aqui
+    - "traefik.http.routers.frontend.entrypoints=websecure"
+    - "traefik.http.services.frontend.loadbalancer.server.port=9000"
+    - "traefik.http.routers.frontend.service=frontend"
+    - "traefik.http.routers.frontend.tls.certresolver=leresolver"
+    # Edge
+    - "traefik.http.routers.edge.rule=Host(`$DOMAIN_EDGE`)" #Coloque o Seu Dominio do Edge Aqui
+    - "traefik.http.routers.edge.entrypoints=websecure"
+    - "traefik.http.services.edge.loadbalancer.server.port=8000"
+    - "traefik.http.routers.edge.service=edge"
+    - "traefik.http.routers.edge.tls.certresolver=leresolver"
 
-            volumes:
-                portainer_data:
+volumes:
+    portainer_data:
 EOF
             ;;
         "Stack - Traefik")
@@ -122,40 +122,40 @@ EOF
             USERPWD=$(htpasswd -nbB $USERNAME $PASSWORD)
 
             cat <<\EOF >> docker-compose.yml
-            version: "3.3"
-            services:
-                traefik:
-                    container_name: traefik
-                    image: "traefik:latest"
-                    restart: always
-                    command:
-                        - --entrypoints.web.address=:80
-                        - --entrypoints.websecure.address=:443
-                        - --api.insecure=true
-                        - --api.dashboard=true
-                        - --providers.docker
-                        - --log.level=ERROR
-                        - --certificatesresolvers.leresolver.acme.httpchallenge=true
-                        - --certificatesresolvers.leresolver.acme.email=$EMAILSSL #Defina aqui seu endereço de e-mail, é para geração de certificados SSL com Let's Encrypt. 
-                        - --certificatesresolvers.leresolver.acme.storage=./acme.json
-                        - --certificatesresolvers.leresolver.acme.httpchallenge.entrypoint=web
-                    ports:
-                        - "80:80"
-                        - "443:443"
-                    volumes:
-                        - "/var/run/docker.sock:/var/run/docker.sock:ro"
-                        - "./acme.json:/acme.json"
-                    labels:
-                        - "traefik.http.routers.http-catchall.rule=hostregexp(`{host:.+}`)"
-                        - "traefik.http.routers.http-catchall.entrypoints=web"
-                        - "traefik.http.routers.http-catchall.middlewares=redirect-to-https"
-                        - "traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https"
-                        - "traefik.http.routers.traefik-dashboard.rule=Host(`$TRAEFIKDOMINIO`)" #Coloque o Seu Dominio do Traefik Aqui
-                        - "traefik.http.routers.traefik-dashboard.entrypoints=websecure"
-                        - "traefik.http.routers.traefik-dashboard.service=api@internal"
-                        - "traefik.http.routers.traefik-dashboard.tls.certresolver=leresolver"
-                        - "traefik.http.middlewares.traefik-auth.basicauth.users=$USERPWD" #Coloque a Senha do Traefik Aqui Nao Remova As Aspas
-                        - "traefik.http.routers.traefik-dashboard.middlewares=traefik-auth"
+version: "3.3"
+services:
+    traefik:
+        container_name: traefik
+        image: "traefik:latest"
+        restart: always
+        command:
+            - --entrypoints.web.address=:80
+            - --entrypoints.websecure.address=:443
+            - --api.insecure=true
+            - --api.dashboard=true
+            - --providers.docker
+            - --log.level=ERROR
+            - --certificatesresolvers.leresolver.acme.httpchallenge=true
+            - --certificatesresolvers.leresolver.acme.email=$EMAILSSL #Defina aqui seu endereço de e-mail, é para geração de certificados SSL com Let's Encrypt. 
+            - --certificatesresolvers.leresolver.acme.storage=./acme.json
+            - --certificatesresolvers.leresolver.acme.httpchallenge.entrypoint=web
+        ports:
+            - "80:80"
+            - "443:443"
+        volumes:
+            - "/var/run/docker.sock:/var/run/docker.sock:ro"
+            - "./acme.json:/acme.json"
+        labels:
+            - "traefik.http.routers.http-catchall.rule=hostregexp(`{host:.+}`)"
+            - "traefik.http.routers.http-catchall.entrypoints=web"
+            - "traefik.http.routers.http-catchall.middlewares=redirect-to-https"
+            - "traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https"
+            - "traefik.http.routers.traefik-dashboard.rule=Host(`$TRAEFIKDOMINIO`)" #Coloque o Seu Dominio do Traefik Aqui
+            - "traefik.http.routers.traefik-dashboard.entrypoints=websecure"
+            - "traefik.http.routers.traefik-dashboard.service=api@internal"
+            - "traefik.http.routers.traefik-dashboard.tls.certresolver=leresolver"
+            - "traefik.http.middlewares.traefik-auth.basicauth.users=$USERPWD" #Coloque a Senha do Traefik Aqui Nao Remova As Aspas
+            - "traefik.http.routers.traefik-dashboard.middlewares=traefik-auth"
 EOF
             ;;
         "Stack - Evolution Api")
