@@ -73,7 +73,7 @@ do
             cd portainer &>> $LOG
             read -p "Entre com o Domínio do Portainer: " $DOMAIN_PORTAINER
             read -p "Entre com o Domínio do Edge: " $DOMAIN_EDGE
-            cat < docker-compose.yml >>EOF
+            cat <<\EOF >> docker-compose.yml
             version: "3.3"
             services:
             portainer:
@@ -121,7 +121,7 @@ EOF
             echo Configurando a senha do Portainer
             USERPWD=$(htpasswd -nbB $USERNAME $PASSWORD)
 
-            cat << EOF > docker-compose.yml
+            cat <<\EOF >> docker-compose.yml
             version: "3.3"
             services:
                 traefik:
