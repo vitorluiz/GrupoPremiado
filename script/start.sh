@@ -53,7 +53,7 @@ do
             apt install build-essential git wget unzip curl apparmor apparmor-utils apache2-utils -y &>> $LOG
             echo Atualizando o sistema
             apt install upgrade -y &>> $LOG
-            hostnamectl set-hostnamem $HOSTNAME
+            hostnamectl set-hostname $HOSTNAME
             ;;
         "Instalar Docker")
             echo "opção $opt"
