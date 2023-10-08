@@ -71,8 +71,8 @@ do
         cd ~
         mkdir portainer &>> $LOG
         cd portainer &>> $LOG
-        read -p "Entre com o Domínio do Portainer: " $DOMAIN_PORTAINER
-        read -p "Entre com o Domínio do Edge: " $DOMAIN_EDGE
+        read -p "Entre com o Domínio do Portainer: " DOMAIN_PORTAINER
+        read -p "Entre com o Domínio do Edge: " DOMAIN_EDGE
         cat <<\EOF >> docker-compose.yml
 version: "3.3"
 services:
@@ -102,6 +102,8 @@ labels:
 volumes:
     portainer_data:
 EOF
+
+echo Arquivo criado
             ;;
         "Stack - Traefik")
             echo "opção $opt"
