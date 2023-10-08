@@ -5,12 +5,8 @@
 #Create at: 2023-10-07
 ##################################
 
-# SCRIPT PATH
-BASEDIR=$(pwd)
-BASE=$BASEDIR/base.sh
 # ACESSANDO O DIRETORIO ROOT
 cd ~ 
-
 # Obtem o endereço do ip do servidor
 IP=$(curl -s ifconfig.me)
 #read -p "Entre com o IP do Servidor: " IP
@@ -18,7 +14,6 @@ IP=$(curl -s ifconfig.me)
 LOGSCRIPT="/var/log/$(echo $0 | cut -d'/' -f2)"
 # Configuração da variável de Log utilizado nesse script
 LOG=$LOGSCRIPT
-
 #############################
 #           MENU            #
 #############################
@@ -42,7 +37,7 @@ do
         "Sistema Essêncial")
             clear
             echo "Opção Escolhida: $opt"
-            read -p "Hostname do servidor " HOSTNAME
+            read -p "Hostname do servidor: " HOSTNAME
             # Definindo o Timezone 
             echo Definindo o Timezone para America/Sao_Paulo
             timedatectl set-timezone America/Sao_Paulo &>> $LOG
@@ -71,15 +66,14 @@ do
             ;;
         "Instalar Portainer")
             echo "opção $opt"
-          
-            cd ~
             # PORTAINER
             echo Instalando o Portainer
+            cd ~
             mkdir portainer &>> $LOG
             cd portainer &>> $LOG
             read -p "Entre com o Domínio do Portainer: " $DOMAIN_PORTAINER
             read -p "Entre com o Domínio do Edge: " $DOMAIN_EDGE
-            cat <<EOF > docker-compose.yml
+            cat < docker-compose.yml >>EOF
             version: "3.3"
             services:
             portainer:
