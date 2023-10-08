@@ -73,34 +73,52 @@ mkdir portainer &>> $LOG
 cd portainer &>> $LOG
 read -p "Entre com o Domínio do Portainer: " DOMAIN_PORTAINER
 read -p "Entre com o Domínio do Edge: " DOMAIN_EDGE
+
+# Criando rede para o typebot
+echo Criando a rede para o Typebot em Driver Overlay
+docker network create --driver=overlay typebot  &>> $LOG
+
+# Gerando o arquivo
+echo Gerando o arquivo
 cat <<\EOF >> docker-compose.yml
 version: "3.3"
-services:
-portainer:
-    container_name: portainer
-    image: portainer/portainer-ce:latest
-    restart: always
-    command: -H unix:///var/run/docker.sock
-volumes:
-    - /var/run/docker.sock:/var/run/docker.sock
-    - portainer_data:/data
-labels:
-    # Frontend
-    - "traefik.enable=true"
-    - "traefik.http.routers.frontend.rule=Host(`$DOMAIN_PORTAINER`)" #Coloque o Seu Dominio do Portainer Aqui
-    - "traefik.http.routers.frontend.entrypoints=websecure"
-    - "traefik.http.services.frontend.loadbalancer.server.port=9000"
-    - "traefik.http.routers.frontend.service=frontend"
-    - "traefik.http.routers.frontend.tls.certresolver=leresolver"
-    # Edge
-    - "traefik.http.routers.edge.rule=Host(`$DOMAIN_EDGE`)" #Coloque o Seu Dominio do Edge Aqui
-    - "traefik.http.routers.edge.entrypoints=websecure"
-    - "traefik.http.services.edge.loadbalancer.server.port=8000"
-    - "traefik.http.routers.edge.service=edge"
-    - "traefik.http.routers.edge.tls.certresolver=leresolver"
 
-volumes:
-    portainer_data:
+services:
+    portainer:
+        container_name: portainer
+        image: portainer/portainer-ce:latest
+        restart: always
+        command: -H unix:///var/run/docker.sock
+    volumes:
+        - /var/run/docker.sock:/var/run/docker.sock
+        - portainer_data:/data
+    labels:
+        # Frontend
+        - "traefik.enable=true"
+        - "traefik.http.routers.frontend.rule=Host(`$DOMAIN_PORTAINER`)" #Coloque o Seu Dominio do Portainer Aqui
+        - "traefik.http.routers.frontend.entrypoints=websecure"
+        - "traefik.http.services.frontend.loadbalancer.server.port=9000"
+        - "traefik.http.routers.frontend.service=frontend"
+        - "traefik.http.routers.frontend.tls.certresolver=leresolver"
+        # Edge
+        - "traefik.http.routers.edge.rule=Host(`$DOMAIN_EDGE`)" #Coloque o Seu Dominio do Edge Aqui
+        - "traefik.http.routers.edge.entrypoints=websecure"
+        - "traefik.http.services.edge.loadbalancer.server.port=8000"
+        - "traefik.http.routers.edge.service=edge"
+        - "traefik.http.routers.edge.tls.certresolver=leresolver"
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints: [ node.role == manager ]
+      resources:
+        limits:
+            cpus: "1"
+            memory: 1024M
+
+
+    volumes:
+        portainer_data:
 EOF
 
 echo Arquivo criado
@@ -158,123 +176,147 @@ services:
             - "traefik.http.routers.traefik-dashboard.tls.certresolver=leresolver"
             - "traefik.http.middlewares.traefik-auth.basicauth.users=$USERPWD" #Coloque a Senha do Traefik Aqui Nao Remova As Aspas
             - "traefik.http.routers.traefik-dashboard.middlewares=traefik-auth"
+        deploy:
+            mode: replicated
+            replicas: 1
+            placement:
+                constraints: [ node.role == manager ]
+            resources:
+                limits:
+                    cpus: "1"
+                    memory: 1024M
+        networks:
+            - typebot
 EOF
-            ;;
-        "Stack - Evolution Api")
-            echo "opção $opt"
-            read -p "Informe o Domínio da API: " EVOAPIDOMAIN
-            read -p "Informe o nome da API: " NOMESUAAPAI
-            GLOBAL_KEY=$(openssl rand -base64 24 | tr -d '\n')
-            $GLOBAL_KEY &>> $LOG
-            cd ~
-            mkdir evolution_api
-            cd evolution_api
-            cat <<EOF > docker-compose.yml
-            version: '3.8'
-            services:
-                evolution_api:
-                    image: davidsongomes/evolution-api:latest
-                    restart: always
-                    volumes:
-                    - evolution_instances:/evolution/instances
-                    - evolution_store:/evolution/store
-                    environment:
-                        CONFIG_SESSION_PHONE_CLIENT: $NOMESUAAPAI
-                        # Browser Name = Chrome | Firefox | Edge | Opera | Safari
-                        CONFIG_SESSION_PHONE_NAME: Chrome
-                        AUTHENTICATION_TYPE: apikey
-                        AUTHENTICATION_API_KEY: $GLOBAL_KEY
-                        AUTHENTICATION_EXPOSE_IN_FETCH_INSTANCES: true
-                        ## Set the secret key to encrypt and decrypt your token and its expiration time
-                        # seconds - 3600s ===1h | zero (0) - never expires
-                        AUTHENTICATION_JWT_EXPIRIN_IN: 0
-                        AUTHENTICATION_JWT_SECRET: "$GLOBAL_KEY"
-                        # Temporary data storage
-                        STORE_MESSAGES: true
-                        STORE_MESSAGE_UP: true
-                        STORE_CONTACTS: true
-                        STORE_CHATS: true
-                        # Set Store Interval in Seconds (7200 = 2h)
-                        CLEAN_STORE_CLEANING_INTERVAL: 7200
-                        CLEAN_STORE_MESSAGES: true
-                        CLEAN_STORE_MESSAGE_UP: true
-                        CLEAN_STORE_CONTACTS: true
-                        CLEAN_STORE_CHATS: true
-                        ## Define a global webhook that will listen for enabled events from all instances
-                        WEBHOOK_GLOBAL_URL: ''
-                        WEBHOOK_GLOBAL_ENABLED: false
-                        # With this option activated, you work with a url per webhook event, respecting the global url and the name of each event
-                        WEBHOOK_GLOBAL_WEBHOOK_BY_EVENTS: false
-                        ## Set the events you want to hear  
-                        WEBHOOK_EVENTS_APPLICATION_STARTUP: false
-                        WEBHOOK_EVENTS_QRCODE_UPDATED: true
-                        WEBHOOK_EVENTS_MESSAGES_SET: true
-                        WEBHOOK_EVENTS_MESSAGES_UPSERT: true
-                        WEBHOOK_EVENTS_MESSAGES_UPDATE: true
-                        WEBHOOK_EVENTS_MESSAGES_DELETE: true
-                        WEBHOOK_EVENTS_SEND_MESSAGE: true
-                        WEBHOOK_EVENTS_CONTACTS_SET: true
-                        WEBHOOK_EVENTS_CONTACTS_UPSERT: true
-                        WEBHOOK_EVENTS_CONTACTS_UPDATE: true
-                        WEBHOOK_EVENTS_PRESENCE_UPDATE: true
-                        WEBHOOK_EVENTS_CHATS_SET: true
-                        WEBHOOK_EVENTS_CHATS_UPSERT: true
-                        WEBHOOK_EVENTS_CHATS_UPDATE: true
-                        WEBHOOK_EVENTS_CHATS_DELETE: true
-                        WEBHOOK_EVENTS_GROUPS_UPSERT: true
-                        WEBHOOK_EVENTS_GROUPS_UPDATE: true
-                        WEBHOOK_EVENTS_GROUP_PARTICIPANTS_UPDATE: true
-                        WEBHOOK_EVENTS_CONNECTION_UPDATE: true
-                        WEBHOOK_EVENTS_CALL: true
-                        # This event fires every time a new token is requested via the refresh route
-                        WEBHOOK_EVENTS_NEW_JWT_TOKEN: false
-                        # This events is used with Typebot
-                        WEBHOOK_EVENTS_TYPEBOT_START: false
-                        WEBHOOK_EVENTS_TYPEBOT_CHANGE_STATUS: false
-                        # This event is used with Chama AI
-                        WEBHOOK_EVENTS_CHAMA_AI_ACTION: false
-                        # This event is used to send errors
-                        WEBHOOK_EVENTS_ERRORS: false
-                        WEBHOOK_EVENTS_ERRORS_WEBHOOK:
-                        # Set qrcode display limit
-                        QRCODE_LIMIT: 30
-                        QRCODE_COLOR: #198754
-                    
-                    labels:
-                        - "traefik.enable=true"
-                        #SSL
-                        #Troque pelo seu dominio
-                        - "traefik.http.routers.evolution_api.rule=Host(`$EVOAPIDOMAIN`)"
-                        - "traefik.http.services.evolution_api.loadbalancer.server.port=8080"
-                        - "traefik.http.routers.evolution_api.service=evolution_api"
-                        - "traefik.http.routers.evolution_api.entrypoints=websecure"
-                        - "traefik.http.routers.evolution_api.tls.certresolver=leresolver"
+;;
+"Stack - Evolution Api")
+echo "opção $opt"
+read -p "Informe o Domínio da API: " EVOAPIDOMAIN
+read -p "Informe o nome da API: " NOMESUAAPAI
+GLOBAL_KEY=$(openssl rand -base64 24 | tr -d '\n')
+$GLOBAL_KEY &>> $LOG
+cd ~
+mkdir evolution_api
+cd evolution_api
+cat <<\EOF > docker-compose.yml
+version: '3.8'
 
-                    networks:
-                        - evolutionapi
+services:
+    evolution_api:
+        image: davidsongomes/evolution-api:latest
+        restart: always
+        volumes:
+        - evolution_instances:/evolution/instances
+        - evolution_store:/evolution/store
+        environment:
+            CONFIG_SESSION_PHONE_CLIENT: $NOMESUAAPAI
+            # Browser Name = Chrome | Firefox | Edge | Opera | Safari
+            CONFIG_SESSION_PHONE_NAME: Chrome
+            AUTHENTICATION_TYPE: apikey
+            AUTHENTICATION_API_KEY: $GLOBAL_KEY
+            AUTHENTICATION_EXPOSE_IN_FETCH_INSTANCES: true
+            ## Set the secret key to encrypt and decrypt your token and its expiration time
+            # seconds - 3600s ===1h | zero (0) - never expires
+            AUTHENTICATION_JWT_EXPIRIN_IN: 0
+            AUTHENTICATION_JWT_SECRET: "$GLOBAL_KEY"
+            # Temporary data storage
+            STORE_MESSAGES: true
+            STORE_MESSAGE_UP: true
+            STORE_CONTACTS: true
+            STORE_CHATS: true
+            # Set Store Interval in Seconds (7200 = 2h)
+            CLEAN_STORE_CLEANING_INTERVAL: 7200
+            CLEAN_STORE_MESSAGES: true
+            CLEAN_STORE_MESSAGE_UP: true
+            CLEAN_STORE_CONTACTS: true
+            CLEAN_STORE_CHATS: true
+            ## Define a global webhook that will listen for enabled events from all instances
+            WEBHOOK_GLOBAL_URL: ''
+            WEBHOOK_GLOBAL_ENABLED: false
+            # With this option activated, you work with a url per webhook event, respecting the global url and the name of each event
+            WEBHOOK_GLOBAL_WEBHOOK_BY_EVENTS: false
+            ## Set the events you want to hear  
+            WEBHOOK_EVENTS_APPLICATION_STARTUP: false
+            WEBHOOK_EVENTS_QRCODE_UPDATED: true
+            WEBHOOK_EVENTS_MESSAGES_SET: true
+            WEBHOOK_EVENTS_MESSAGES_UPSERT: true
+            WEBHOOK_EVENTS_MESSAGES_UPDATE: true
+            WEBHOOK_EVENTS_MESSAGES_DELETE: true
+            WEBHOOK_EVENTS_SEND_MESSAGE: true
+            WEBHOOK_EVENTS_CONTACTS_SET: true
+            WEBHOOK_EVENTS_CONTACTS_UPSERT: true
+            WEBHOOK_EVENTS_CONTACTS_UPDATE: true
+            WEBHOOK_EVENTS_PRESENCE_UPDATE: true
+            WEBHOOK_EVENTS_CHATS_SET: true
+            WEBHOOK_EVENTS_CHATS_UPSERT: true
+            WEBHOOK_EVENTS_CHATS_UPDATE: true
+            WEBHOOK_EVENTS_CHATS_DELETE: true
+            WEBHOOK_EVENTS_GROUPS_UPSERT: true
+            WEBHOOK_EVENTS_GROUPS_UPDATE: true
+            WEBHOOK_EVENTS_GROUP_PARTICIPANTS_UPDATE: true
+            WEBHOOK_EVENTS_CONNECTION_UPDATE: true
+            WEBHOOK_EVENTS_CALL: true
+            # This event fires every time a new token is requested via the refresh route
+            WEBHOOK_EVENTS_NEW_JWT_TOKEN: false
+            # This events is used with Typebot
+            WEBHOOK_EVENTS_TYPEBOT_START: false
+            WEBHOOK_EVENTS_TYPEBOT_CHANGE_STATUS: false
+            # This event is used with Chama AI
+            WEBHOOK_EVENTS_CHAMA_AI_ACTION: false
+            # This event is used to send errors
+            WEBHOOK_EVENTS_ERRORS: false
+            WEBHOOK_EVENTS_ERRORS_WEBHOOK:
+            # Set qrcode display limit
+            QRCODE_LIMIT: 30
+            QRCODE_COLOR: #198754
+        
+        labels:
+            - "traefik.enable=true"
+            #SSL
+            #Troque pelo seu dominio
+            - "traefik.http.routers.evolution_api.rule=Host(`$EVOAPIDOMAIN`)"
+            - "traefik.http.services.evolution_api.loadbalancer.server.port=8080"
+            - "traefik.http.routers.evolution_api.service=evolution_api"
+            - "traefik.http.routers.evolution_api.entrypoints=websecure"
+            - "traefik.http.routers.evolution_api.tls.certresolver=leresolver"
 
-                networks:
-                    evolutionapi:
-                        external: true
+        networks:
+            - evolutionapi
+        
+        deploy:
+            mode: replicated
+            replicas: 1
+            placement:
+                constraints: [ node.role == manager ]
+            resources:
+                limits:
+                    cpus: "1"
+                    memory: 1024M
 
-                volumes:
-                    evolution_instances:
-                        evolution_store:
+    networks:
+        evolutionapi:
+            external: true
+
+    volumes:
+        evolution_instances:
+            evolution_store:
 EOF
-            echo "Salve sua API-KEY: " $GLOBAL_KEY
-            ;;
-        "Stack - Postegres")
-            echo "opção $opt"
-            ;;
-        "Stack - Redis")
-            echo "opção $opt"
-            ;;
-        "Stack - Minio")
-            echo "opção $opt"
-            ;;
-        "Stack - N8M")
-            ;;
-        "Stack - Typebot")
+echo Arquivo Gerado
+echo Salve sua API-KEY:
+echo $GLOBAL_KEY
+;;
+"Stack - Postegres")
+echo "opção $opt"
+;;
+"Stack - Redis")
+echo "opção $opt"
+;;
+"Stack - Minio")
+echo "opção $opt"
+;;
+"Stack - N8M")
+;;
+"Stack - Typebot")
 echo "opção $opt"
 # INPUT POSTGRESS
 echo Informações para instalação do postgres
@@ -293,10 +335,6 @@ read -p "E-mail SMTP HOST: " EMAIL_SMTP_HOST
 read -p "E-mail SMTP_PORT: " EMAIL_SMTP_PORT
 read -p "E-mail SMTP_USERNAME: " EMAIL_SMTP_USERNAME
 read -p "E-mail SMTP_PASSWORD: " EMAIL_SMTP_PASSWORD
-
-# Criando rede para o typebot
-echo Criando a rede para o Typebot em Driver Overlay
-docker network create --driver=overlay typebot  &>> $LOG
 
 cat <<\EOF>> docker-compose.yml
 version: '3.7'
@@ -342,7 +380,15 @@ services:
       - S3_ENDPOINT=$DOMAIN_STORAGE # Troque pelo seu dominio ou subdominio
     networks:
       - typebot
-
+    deploy:
+        mode: replicated
+        replicas: 1
+        placement:
+            constraints: [ node.role == manager ]
+        resources:
+            limits:
+                cpus: "1"
+                memory: 1024M
   typebot-viewer:
     image: baptistearno/typebot-viewer:latest
     restart: always
@@ -362,6 +408,17 @@ services:
       - S3_SECRET_KEY=minio123 # Troque se necessario - Deve ser Igual ao Declarado no Typebot Builder S3_SECRET_KEY=
       - S3_BUCKET=typebot
       - S3_ENDPOINT=$DOMAIN_STORAGE # Troque pelo seu dominio ou subdominio
+    
+    deploy:
+        mode: replicated
+        replicas: 1
+        placement:
+            constraints: [ node.role == manager ]
+        resources:
+            limits:
+                cpus: "1"
+                memory: 1024M
+
     networks:
       - typebot
 
@@ -389,7 +446,15 @@ services:
       - typebot_s3_data:/data
     networks:
       - typebot
-
+    deploy:
+        mode: replicated
+        replicas: 1
+        placement:
+            constraints: [ node.role == manager ]
+        resources:
+            limits:
+                cpus: "1"
+                memory: 1024M
   createbuckets:
     image: minio/mc
     depends_on:
