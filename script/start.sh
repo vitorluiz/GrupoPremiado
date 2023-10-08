@@ -33,47 +33,47 @@ options=(
     "Exit")
 select opt in "${options[@]}"
 do
-    case $opt in
-    "Sistema Essêncial")
-        clear
-        echo "Opção Escolhida: $opt"
-        read -p "Hostname do servidor: " HOSTNAME
-        # Definindo o Timezone 
-        echo Definindo o Timezone para America/Sao_Paulo
-        timedatectl set-timezone America/Sao_Paulo &>> $LOG
-        # ATUALIZANDO E INSTALANDO OS PACOTES ESSENCIAIS
-        echo Atualizando os pacotes
-        apt update &>> $LOG
-        echo Instalando os pacotes essenciais
-        apt install build-essential git wget unzip curl apparmor apparmor-utils apache2-utils -y &>> $LOG
-        echo Atualizando o sistema
-        apt install upgrade -y &>> $LOG
-        hostnamectl set-hostname $HOSTNAME
-        ;;
-    "Instalar Docker")
-        echo "opção $opt"
-        echo Baixando o instalador do Docker CE
-        curl -fsSL https://get.docker.com -o get-docker.sh &>> $LOG
-        echo Instalando o Docker CE
-        sh get-docker.sh &>> $LOG
-        echo Instalado $(docker --version)
-        echo Instalado $(docker compose --version)
+case $opt in
+"Sistema Essêncial")
+clear
+echo "Opção Escolhida: $opt"
+read -p "Hostname do servidor: " HOSTNAME
+# Definindo o Timezone 
+echo Definindo o Timezone para America/Sao_Paulo
+timedatectl set-timezone America/Sao_Paulo &>> $LOG
+# ATUALIZANDO E INSTALANDO OS PACOTES ESSENCIAIS
+echo Atualizando os pacotes
+apt update &>> $LOG
+echo Instalando os pacotes essenciais
+apt install build-essential git wget unzip curl apparmor apparmor-utils apache2-utils -y &>> $LOG
+echo Atualizando o sistema
+apt install upgrade -y &>> $LOG
+hostnamectl set-hostname $HOSTNAME
+;;
+"Instalar Docker")
+echo "opção $opt"
+echo Baixando o instalador do Docker CE
+curl -fsSL https://get.docker.com -o get-docker.sh &>> $LOG
+echo Instalando o Docker CE
+sh get-docker.sh &>> $LOG
+echo Instalado $(docker --version)
+echo Instalado $(docker compose --version)
 
-        # HABILITANDO O MODO SWARM NO DOCKER CE
-        echo Habilitando o Docker Swarm
-        docker swarm init $IP &>> $LOG
-        docker swarm init --advertise-addr $IP &>> $LOG
-        ;;
-    "Instalar Portainer")
-        echo "opção $opt"
-        # PORTAINER
-        echo Instalando o Portainer
-        cd ~
-        mkdir portainer &>> $LOG
-        cd portainer &>> $LOG
-        read -p "Entre com o Domínio do Portainer: " DOMAIN_PORTAINER
-        read -p "Entre com o Domínio do Edge: " DOMAIN_EDGE
-        cat <<\EOF >> docker-compose.yml
+# HABILITANDO O MODO SWARM NO DOCKER CE
+echo Habilitando o Docker Swarm
+docker swarm init $IP &>> $LOG
+docker swarm init --advertise-addr $IP &>> $LOG
+;;
+"Instalar Portainer")
+echo "opção $opt"
+# PORTAINER
+echo Instalando o Portainer
+cd ~
+mkdir portainer &>> $LOG
+cd portainer &>> $LOG
+read -p "Entre com o Domínio do Portainer: " DOMAIN_PORTAINER
+read -p "Entre com o Domínio do Edge: " DOMAIN_EDGE
+cat <<\EOF >> docker-compose.yml
 version: "3.3"
 services:
 portainer:
@@ -104,26 +104,26 @@ volumes:
 EOF
 
 echo Arquivo criado
-            ;;
-        "Stack - Traefik")
-            echo "opção $opt"
-            read -p "Usuário do Traefik: " USERNAME 
-            read -s "Senha do Traefik: " PASSWORD
-            $USERNAME &>> $LOG
-            $PASSWORD &>> $LOG
-            read -p "E-mail para SSL Traefik: " EMAILSSL
-            read -p "Informe o Domínio para o Traefik: " TRAEFIKDOMINIO
+;;
+"Stack - Traefik")
+echo "opção $opt"
+read -p "Usuário do Traefik: " USERNAME 
+read -s "Senha do Traefik: " PASSWORD
+$USERNAME &>> $LOG
+$PASSWORD &>> $LOG
+read -p "E-mail para SSL Traefik: " EMAILSSL
+read -p "Informe o Domínio para o Traefik: " TRAEFIKDOMINIO
 
-            # Arquivo de certificado de Segurança
-            echo Criando o arquivo de segurança Acme.json
-            touch acme.json &>> $LOG
-            echo alterando a permisão do arquivo Acme.json
-            chmod 600 acme.json &>> $LOG
-            # Gerando a senha 
-            echo Configurando a senha do Portainer
-            USERPWD=$(htpasswd -nbB $USERNAME $PASSWORD)
+# Arquivo de certificado de Segurança
+echo Criando o arquivo de segurança Acme.json
+touch acme.json &>> $LOG
+echo alterando a permisão do arquivo Acme.json
+chmod 600 acme.json &>> $LOG
+# Gerando a senha 
+echo Configurando a senha do Portainer
+USERPWD=$(htpasswd -nbB $USERNAME $PASSWORD)
 
-            cat <<\EOF >> docker-compose.yml
+cat <<\EOF >> docker-compose.yml
 version: "3.3"
 services:
     traefik:
@@ -275,9 +275,148 @@ EOF
         "Stack - N8M")
             ;;
         "Stack - Typebot")
-            echo "opção $opt"
-            echo "Em breve"
-            ;;
+echo "opção $opt"
+# INPUT POSTGRESS
+echo Informações para instalação do postgres
+read -p "Banco Postgres: " BDPOSTGRES
+read -s "Senha Postgres: " PWDPOSTGRES
+# INPUT TYPEBOT
+echo Informações para instalação do TYPEBOT
+read -p "Entre com o Domínio do TYPEBOT BUILDER: " DOMAIN_BUILDER
+read -p "Entre com o Domínio do TYPEBOT VIEWER: " DOMAIN_VIEWER
+read -p "Entre com o Domínio do TYPEBOT STORAGE: " DOMAIN_STORAGE
+SECRET_KEY=$(openssl rand -base64 24 | tr -d '\n')
+$SECRET_KEY &>> $LOG
+echo Informações do SMTP para TYPEBOT
+read -p "E-mail Admin: " EMAIL_ADMIN
+read -p "E-mail SMTP HOST: " EMAIL_SMTP_HOST
+read -p "E-mail SMTP_PORT: " EMAIL_SMTP_PORT
+read -p "E-mail SMTP_USERNAME: " EMAIL_SMTP_USERNAME
+read -p "E-mail SMTP_PASSWORD: " EMAIL_SMTP_PASSWORD
+
+# Criando rede para o typebot
+echo Criando a rede para o Typebot em Driver Overlay
+docker network create --driver=overlay typebot  &>> $LOG
+
+cat <<\EOF>> docker-compose.yml
+version: '3.7'
+services:
+  typebot-db:
+    image: postgres:16
+    restart: always
+    volumes:
+      - typebot_db_data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_DB=$BDPOSTGRES
+      - POSTGRES_PASSWORD=$PWDPOSTGRES
+    networks:
+      - typebot
+
+  typebot-builder:
+    image: baptistearno/typebot-builder:latest
+    restart: always
+    depends_on:
+      - typebot-db
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.typebot-builder.rule=Host(`$DOMAIN_BUILDER`)" # Troque pelo seu dominio ou subdominio
+      - "traefik.http.routers.typebot-builder.entrypoints=web,websecure"
+      - "traefik.http.routers.typebot-builder.tls.certresolver=leresolver"
+    environment:
+      - DATABASE_URL=postgresql://postgres:$BDPOSTGRES@typebot-db:5432/typebot
+      - NEXTAUTH_URL=https://$DOMAIN_BUILDER # Troque pelo seu dominio ou subdominio
+      - NEXT_PUBLIC_VIEWER_URL=https://$DOMAIN_VIEWER # Troque pelo seu dominio ou subdominio
+      - ENCRYPTION_SECRET=$SECRET_KEY
+      - ADMIN_EMAIL=$EMAIL_ADMIN # Troque pelo seu email
+      - DISABLE_SIGNUP=false # Mude Para false caso queira permitir que outras pessoas criem contas é nescessario estar como false no primeiro login do administrador
+      - SMTP_AUTH_DISABLED=false
+      - SMTP_SECURE=true # Troque para false seu nao usar a porta 465 ou se estiver enfretando problemas no login
+      - SMTP_HOST=$EMAIL_SMTP_HOST # Troque pelo seu SMTP USE SOMENTE DOMINIO PROPRIETARIOS
+      - SMTP_PORT=$EMAIL_SMTP_PORT # altere aqui se nescessario portas comuns 25, 587, 465, 2525
+      - SMTP_USERNAME=$EMAIL_SMTP_USERNAME # Troque pelo seu email
+      - SMTP_PASSWORD=$EMAIL_SMTP_PASSWORD # Troque pela sua senha
+      - NEXT_PUBLIC_SMTP_FROM=$EMAIL_SMTP_USERNAME # Troque pelo seu email
+      - S3_ACCESS_KEY=minio # Troque se necessario
+      - S3_SECRET_KEY=minio123 # Troque se necessario
+      - S3_BUCKET=typebot
+      - S3_ENDPOINT=$DOMAIN_STORAGE # Troque pelo seu dominio ou subdominio
+    networks:
+      - typebot
+
+  typebot-viewer:
+    image: baptistearno/typebot-viewer:latest
+    restart: always
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.typebot-viewer.rule=Host(`$DOMAIN_VIEWER`)" # Troque pelo seu dominio ou subdominio
+      - "traefik.http.routers.typebot-viewer.entrypoints=web,websecure"
+      - "traefik.http.routers.typebot-viewer.tls.certresolver=leresolver"
+    environment:
+      - DATABASE_URL=postgresql://postgres:$BDPOSTGRES@typebot-db:5432/typebot
+      - NEXTAUTH_URL=https://$DOMAIN_BUILDER # Troque pelo seu dominio ou subdominio
+      - NEXT_PUBLIC_VIEWER_URL=https://$DOMAIN_VIEWER # Troque pelo seu dominio ou subdominio
+      - ENCRYPTION_SECRET=$SECRET_KEY
+      - SMTP_HOST=$EMAIL_SMTP_HOST # Troque pelo seu SMTP USE SOMENTE DOMINIO PROPRIETARIOS
+      - NEXT_PUBLIC_SMTP_FROM=$EMAIL_SMTP_USERNAME # Troque pelo seu email
+      - S3_ACCESS_KEY=minio # Troque se necessario - Deve ser Igual ao Declarado no Typebot Builder S3_ACCESS_KEY=
+      - S3_SECRET_KEY=minio123 # Troque se necessario - Deve ser Igual ao Declarado no Typebot Builder S3_SECRET_KEY=
+      - S3_BUCKET=typebot
+      - S3_ENDPOINT=$DOMAIN_STORAGE # Troque pelo seu dominio ou subdominio
+    networks:
+      - typebot
+
+  mail:
+    image: bytemark/smtp
+    restart: always
+    networks:
+      - typebot
+
+  minio:
+    image: minio/minio
+    restart: always
+    command: server /data
+    ports:
+      - '9000:9000'
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.minio.rule=Host(`$DOMAIN_STORAGE`)" # Troque pelo seu dominio ou subdominio
+      - "traefik.http.routers.minio.entrypoints=web,websecure"
+      - "traefik.http.routers.minio.tls.certresolver=leresolver"
+    environment:
+      MINIO_ROOT_USER: minio # Troque se necessario - Deve ser Igual ao Declarado no Typebot Builder S3_ACCESS_KEY=
+      MINIO_ROOT_PASSWORD: minio123 # Troque se necessario - Deve ser Igual ao Declarado no Typebot Builder S3_SECRET_KEY=
+    volumes:
+      - typebot_s3_data:/data
+    networks:
+      - typebot
+
+  createbuckets:
+    image: minio/mc
+    depends_on:
+      - minio
+    entrypoint: >
+      /bin/sh -c "
+      sleep 10;
+      /usr/bin/mc config host add minio http://minio:9000 minio minio123;
+      /usr/bin/mc mb minio/typebot;
+      /usr/bin/mc anonymous set public minio/typebot/public;
+      exit 0;
+      "
+    networks:
+      - typebot
+
+volumes:
+  typebot_db_data:
+  typebot_s3_data:
+
+networks:
+  typebot:
+    external: true
+EOF
+# Finalização do arquivo
+echo Arquivo Finalizado
+
+;;
         "Stack - Chatwoot")
             echo "opção $opt"
             echo "Em breve"
